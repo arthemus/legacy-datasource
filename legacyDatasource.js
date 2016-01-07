@@ -89,18 +89,18 @@ angular.module('legacyDatasource', [])
 
                         this.$promise.then = function (callback) {
                             _callback = callback;
-                        }
+                        };
 
                         return this;
                     }
-                }
+                };
 
                 /**
                  * Check if the datasource is waiting for any request response
                  */
                 this.isBusy = function () {
                     return busy;
-                }
+                };
 
                 /**
                  *  Error Handler function
@@ -139,7 +139,7 @@ angular.module('legacyDatasource', [])
                     if (this.onError) {
                         this.onError.call(this, error);
                     }
-                }
+                };
 
                 // Start watching for changes in
                 // activeRow to notify observers
@@ -152,7 +152,7 @@ angular.module('legacyDatasource', [])
                         }
                     }.bind(this), true);
                 }
-            }
+            };
 
             //Public methods
             /**
@@ -670,9 +670,13 @@ angular.module('legacyDatasource', [])
                          *  It means that any change on dataset items will
                          *  generate a new request on the server
                          */
-                        if (this.autoPost) {
+                        if (this.autoPost)
                             this.startAutoPost();
-                        }
+
+                        /*
+                         * Atualiza automaticamente os observadores do objeto.
+                         */
+                        this.onNotifyObservers();
                     }
                 }.bind(this);
             };
