@@ -21,7 +21,7 @@ angular.module('legacyDatasource', [])
             this.tp = "";
             this.target = "";
             this.filter = [];
-            this.masters = [];
+            this.follow = [];
             this.record = "";
             this.key = "";
 
@@ -60,25 +60,25 @@ angular.module('legacyDatasource', [])
 
                 // Get the service resource
                 service = {
-                    save: function (object) {
-                        return this.call(_self.entity, "POST", object, true);
+                    save: function (url, params) {
+                        return this.call(url, params, true);
                     },
-                    update: function (url, object) {
-                        return this.call(url, "PUT", object);
+                    update: function (url, params) {
+                        return this.call(url, params);
                     },
-                    remove: function (url) {
-                        return this.call(url, "DELETE", null, true);
+                    remove: function (url, params) {
+                        return this.call(url, params, true);
                     },
-                    call: function (url, verb, object, applyScope) {
+                    call: function (url, params) {
+
                         var _callback;
                         busy = true;
 
                         // Get an ajax promise
                         this.$promise = $http({
-                            method: verb,
                             url: url,
-                            data: (object) ? JSON.stringify(object) : null,
-                            headers: _self.headers
+                            method: "POST",
+                            params: params
                         }).success(function (data, status, headers, config) {
                             busy = false;
                             if (_callback) _callback(data);
@@ -159,7 +159,30 @@ angular.module('legacyDatasource', [])
              * Append a new value to the end of this dataset.
              */
             this.insert = function (obj, callback) {
-                service.save(obj).$promise.then(callback);
+
+                var params = {
+                    _id: this.record,
+                    _op: 'I',
+                    _q_p_0: 0
+                };
+
+                if (this.fields.length > 0) {
+                    for (var i = 0; i < this.fields.length; i++) {
+                        var field = this.fields[i].trim();
+                        if (obj.hasOwnProperty(field)) {
+                            var param = '_p_';
+                            param = param + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                            Object.defineProperty(params, param, {
+                                value: obj[field],
+                                writable: true,
+                                enumerable: true,
+                                configurable: true
+                            });
+                        }
+                    }
+                }
+
+                service.save(this.tp, params).$promise.then(callback);
             };
 
             /**
@@ -555,11 +578,10 @@ angular.module('legacyDatasource', [])
                     "_id": this.target
                 };
 
-                if (this.masters.length > 0) {
-                    for (var i = 0; i < this.masters.length; i++) {
-                        var masterName = this.masters[i];
+                if (this.follow.length > 0) {
+                    for (var i = 0; i < this.follow.length; i++) {
+                        var masterName = this.follow[i];
                         if (datasetsList.hasOwnProperty(masterName)) {
-                            var dataset = datasetsList[masterName];
                             var param = "_p_";
                             param = param + i;
                             Object.defineProperty(tempFilters, param, {
@@ -587,19 +609,21 @@ angular.module('legacyDatasource', [])
                 // Make the datasource busy
                 busy = true;
 
-                // Get an ajax promise
-                this.$promise = $http({
-                    url: resourceURL,
-                    method: "POST",
-                    params: tempFilters
-                }).success(function (data, status, headers, config) {
-                    busy = false;
-                    sucessHandler(data.data.records)
-                }.bind(this)).error(function (data, status, headers, config) {
-                    busy = false;
-                    this.handleError(data);
-                    if (callbacks.error) callbacks.error.call(this, data);
-                }.bind(this));
+                if (this.tp) {
+                    // Get an ajax promise
+                    this.$promise = $http({
+                        url: resourceURL,
+                        method: "POST",
+                        params: tempFilters
+                    }).success(function (data, status, headers, config) {
+                        busy = false;
+                        sucessHandler(data.data.records)
+                    }.bind(this)).error(function (data, status, headers, config) {
+                        busy = false;
+                        this.handleError(data);
+                        if (callbacks.error) callbacks.error.call(this, data);
+                    }.bind(this));
+                }
 
                 // Success Handler
                 var sucessHandler = function (data) {
@@ -672,13 +696,13 @@ angular.module('legacyDatasource', [])
                          */
                         if (this.autoPost)
                             this.startAutoPost();
-
-                        /*
-                         * Atualiza automaticamente os observadores do objeto.
-                         */
-                        this.onNotifyObservers();
                     }
                 }.bind(this);
+
+                /*
+                 * Atualiza automaticamente os observadores do objeto.
+                 */
+                this.onNotifyObservers();
             };
 
             /**
@@ -826,7 +850,7 @@ angular.module('legacyDatasource', [])
             dts.target = props.target;
             dts.filters = props.filters;
             dts.fields = props.fields;
-            dts.masters = props.masters;
+            dts.follow = props.follow;
             dts.record = props.record;
             dts.key = props.key;
 
@@ -862,10 +886,10 @@ angular.module('legacyDatasource', [])
             dts.init();
             this.storeDataset(dts);
 
-            if (props.masters.length > 0) {
+            if (props.follow.length > 0) {
 
-                for (var i = 0; i < props.masters.length; i++) {
-                    var master = props.masters[i];
+                for (var i = 0; i < props.follow.length; i++) {
+                    var master = props.follow[i];
                     dsObservables[master] = dts;
                 }
 
@@ -932,7 +956,7 @@ angular.module('legacyDatasource', [])
                         tp: attrs.tp,
                         target: attrs.target,
                         fields: (attrs.fields) ? attrs.fields : [],
-                        masters: (attrs.masters) ? attrs.masters : [],
+                        follow: (attrs.follow) ? attrs.follow : [],
                         record: attrs.record,
                         key: attrs.key,
 
@@ -962,8 +986,8 @@ angular.module('legacyDatasource', [])
                         props.fields = props.fields.split(",");
                     }
 
-                    if (Object.prototype.toString.call(props.masters) !== '[object Array]') {
-                        props.masters = props.masters.split(",");
+                    if (Object.prototype.toString.call(props.follow) !== '[object Array]') {
+                        props.follow = props.follow.split(",");
                     }
 
                     var firstLoad = {
