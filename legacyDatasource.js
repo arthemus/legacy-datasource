@@ -32,6 +32,7 @@ angular.module('legacyDatasource', [])
             this.enabled = true;
             this.endpoint = null;
             this.active = {};
+            this.oldActive = {};
             this.inserting = false;
             this.editing = false;
             this.fetchSize = 2;
@@ -163,7 +164,7 @@ angular.module('legacyDatasource', [])
                 var params = {
                     _id: this.record,
                     _op: 'I',
-                    _q_p_0: 0
+                    _q_p_0: 1 // TODO Pegar a quantidade de registros atual
                 };
 
                 if (this.fields.length > 0) {
@@ -189,22 +190,39 @@ angular.module('legacyDatasource', [])
              * Uptade a value into this dataset by using the dataset key to compare
              * the objects
              */
-            this.update = function (obj, callback) {
-                // Get the keys values
-                var keyObj = getKeyValues(obj);
+            this.update = function (obj, oldObj, callback) {
 
-                var url = this.entity;
+                var params = {
+                    _id: this.record,
+                    _op: 'U',
+                    _q_p_0: 1 // TODO Pegar a quantidade de registros atual
+                };
 
-                var suffixPath = "";
-                for (var key in keyObj) {
-                    if (keyObj.hasOwnProperty(key)) {
-                        suffixPath += "/" + keyObj[key];
+                if (this.fields.length > 0) {
+                    for (var i = 0; i < this.fields.length; i++) {
+                        var field = this.fields[i].trim();
+                        if (obj.hasOwnProperty(field)) {
+                            var newParam = '_p_';
+                            var oldParam = '_o_';
+                            newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                            oldParam = oldParam + i + '_0';
+                            Object.defineProperty(params, newParam, {
+                                value: obj[field],
+                                writable: true,
+                                enumerable: true,
+                                configurable: true
+                            });
+                            Object.defineProperty(params, oldParam, {
+                                value: oldObj[field],
+                                writable: true,
+                                enumerable: true,
+                                configurable: true
+                            });
+                        }
                     }
                 }
 
-                url = url + suffixPath;
-
-                service.update(url, obj).$promise.then(callback);
+                service.update(this.tp, params).$promise.then(callback);
             };
 
             /**
@@ -223,27 +241,17 @@ angular.module('legacyDatasource', [])
 
                 } else if (this.editing) {
                     // Make a new request to update the modified item
-                    this.update(this.active, function (obj) {
-                        // Get the list of keys
-                        var keyObj = getKeyValues(obj);
+                    this.update(this.active, this.oldActive, function (obj) {
 
-                        // For each row data
-                        this.data.forEach(function (currentRow) {
-                            // Iterate all keys checking if the
-                            // current object match with the
-                            // extracted key values
-                            var found;
-                            for (var key in keyObj) {
-                                if (currentRow[key] && currentRow[key] === keyObj[key]) {
-                                    found = true;
-                                } else {
-                                    found = false;
-                                }
-                            }
-                            if (found) {
-                                this.copy(obj, currentRow);
-                            }
-                        }.bind(this));
+                        //this.fetch(this, {
+                        //    success: function (data) {
+                        //        if (data && data.length > 0) {
+                        //            this.active = data[0];
+                        //            this.cursor = 0;
+                        //        }
+                        //    }
+                        //});
+
                     }.bind(this));
                 }
 
@@ -278,7 +286,10 @@ angular.module('legacyDatasource', [])
              * Put the datasource into the editing state
              */
             this.startEditing = function (item) {
-                if (item) this.active = this.copy(item);
+                if (item) {
+                    this.active = this.copy(item);
+                    this.oldActive = this.copy(item);
+                }
                 this.editing = true;
             };
 
@@ -288,49 +299,62 @@ angular.module('legacyDatasource', [])
              */
             this.remove = function (object, callback) {
                 var _remove = function (object, callback) {
+
                     if (!object) {
                         object = this.active;
                     }
 
-                    var keyObj = getKeyValues(object);
+                    callback = callback || function () {
 
-                    var suffixPath = "";
-                    for (var key in keyObj) {
-                        if (keyObj.hasOwnProperty(key)) {
-                            suffixPath += "/" + keyObj[key];
+                            var found;
+
+                            var key = this.key;
+
+                            for (var i = 0; i < this.data.length; i++) {
+                                if (this.data[i][key] && this.data[i][key] === object[key]) {
+                                    found = true;
+                                } else {
+                                    found = false;
+                                }
+                            }
+
+                            if (found) {
+                                this.data.splice(i, 1)
+                                this.active = (i > 0) ? this.data[i - 1] : null;
+                            }
+
+                        }.bind(this);
+
+                    var params = {
+                        _id: this.record,
+                        _op: 'D',
+                        _q_p_0: 1, // TODO Pegar a quantidade de registros atual
+                        _qstart: 0,
+                        _qreload: false,
+                        _qpaging: true,
+                        _q_sort: '',
+                        _qdir: '',
+                        _qfield: ''
+                    };
+
+                    if (this.fields.length > 0) {
+                        for (var i = 0; i < this.fields.length; i++) {
+                            var field = this.fields[i].trim();
+                            if (object.hasOwnProperty(field)) {
+                                var newParam = '_p_';
+                                newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                                Object.defineProperty(params, newParam, {
+                                    value: object[field],
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
+                            }
                         }
                     }
 
-                    callback = callback || function () {
-                            // For each row data
-                            for (var i = 0; i < this.data.length; i++) {
-                                // Iterate all keys checking if the
-                                // current object match with the same
-                                // vey values
-                                // Check all keys
-                                var found;
-                                for (var key in keyObj) {
-                                    if (keyObj.hasOwnProperty(key)) {
-                                        if (this.data[i][key] && this.data[i][key] === keyObj[key]) {
-                                            found = true;
-                                        } else {
-                                            // There's a difference between the current object
-                                            // and the key values extracted from the object
-                                            // that we want to remove
-                                            found = false;
-                                        }
-                                    }
-                                }
-                                if (found) {
-                                    // If it's the object we're loking for
-                                    // remove it from the array
-                                    this.data.splice(i, 1)
-                                    this.active = (i > 0) ? this.data[i - 1] : null;
-                                }
-                            }
-                        }.bind(this)
+                    service.remove(this.tp, params).$promise.then(callback);
 
-                    service.remove(this.entity + suffixPath).$promise.then(callback);
                 }.bind(this);
 
                 if (this.deleteMessage && this.deleteMessage.length > 0) {
