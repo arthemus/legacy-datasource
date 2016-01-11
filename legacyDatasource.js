@@ -24,6 +24,7 @@ angular.module('legacyDatasource', [])
             this.follow = [];
             this.record = "";
             this.key = "";
+            this.defaultValue = "";
 
             // Public members
             this.data = [];
@@ -230,34 +231,91 @@ angular.module('legacyDatasource', [])
              */
             this.post = function () {
                 if (this.inserting) {
-                    // Make a new request to persist the new item
+
                     this.insert(this.active, function (obj) {
-                        // In case of success add the new inserted value at
-                        // the end of the array
-                        this.data.push(obj);
-                        // The new object is now the active
-                        this.active = obj;
-                    }.bind(this));
+
+                        var dataset = this;
+                        $timeout(function () {
+                            dataset.fetch.call(dataset, this);
+                        }.bind(this));
+
+                    }.bind(this), 1);
 
                 } else if (this.editing) {
-                    // Make a new request to update the modified item
+
                     this.update(this.active, this.oldActive, function (obj) {
 
-                        //this.fetch(this, {
-                        //    success: function (data) {
-                        //        if (data && data.length > 0) {
-                        //            this.active = data[0];
-                        //            this.cursor = 0;
-                        //        }
-                        //    }
-                        //});
+                        var dataset = this;
+                        $timeout(function () {
+                            dataset.fetch.call(dataset, this);
+                        }.bind(this));
 
-                    }.bind(this));
+                    }.bind(this), 1);
+
                 }
 
                 // Set this datasource back to the normal state
                 this.editing = false;
                 this.inserting = false;
+            };
+
+            /**
+             * Remove an object from this dataset by using the given id.
+             * the objects
+             */
+            this.remove = function (object, callback) {
+                var _remove = function (object, callback) {
+
+                    if (!object) {
+                        object = this.active;
+                    }
+
+                    var params = {
+                        _id: this.record,
+                        _op: 'D',
+                        _q_p_0: 1, // TODO Pegar a quantidade de registros atual
+                        _qstart: 0,
+                        _qreload: false,
+                        _qpaging: true,
+                        _q_sort: '',
+                        _qdir: '',
+                        _qfield: ''
+                    };
+
+                    if (this.fields.length > 0) {
+                        for (var i = 0; i < this.fields.length; i++) {
+                            var field = this.fields[i].trim();
+                            if (object.hasOwnProperty(field)) {
+                                var newParam = '_p_';
+                                newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                                Object.defineProperty(params, newParam, {
+                                    value: object[field],
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
+                            }
+                        }
+                    }
+
+                    service.remove(this.tp, params).$promise.then(function () {
+
+                        var dataset = this;
+                        $timeout(function () {
+                            dataset.fetch.call(dataset, this);
+                        }.bind(this), 1);
+
+                    }.bind(this));
+
+                }.bind(this);
+
+                if (this.deleteMessage && this.deleteMessage.length > 0) {
+                    if (confirm(this.deleteMessage)) {
+                        _remove(object, callback);
+                    }
+                } else {
+                    _remove(object, callback);
+                }
             };
 
             /**
@@ -293,78 +351,6 @@ angular.module('legacyDatasource', [])
                 this.editing = true;
             };
 
-            /**
-             * Remove an object from this dataset by using the given id.
-             * the objects
-             */
-            this.remove = function (object, callback) {
-                var _remove = function (object, callback) {
-
-                    if (!object) {
-                        object = this.active;
-                    }
-
-                    callback = callback || function () {
-
-                            var found;
-
-                            var key = this.key;
-
-                            for (var i = 0; i < this.data.length; i++) {
-                                if (this.data[i][key] && this.data[i][key] === object[key]) {
-                                    found = true;
-                                } else {
-                                    found = false;
-                                }
-                            }
-
-                            if (found) {
-                                this.data.splice(i, 1)
-                                this.active = (i > 0) ? this.data[i - 1] : null;
-                            }
-
-                        }.bind(this);
-
-                    var params = {
-                        _id: this.record,
-                        _op: 'D',
-                        _q_p_0: 1, // TODO Pegar a quantidade de registros atual
-                        _qstart: 0,
-                        _qreload: false,
-                        _qpaging: true,
-                        _q_sort: '',
-                        _qdir: '',
-                        _qfield: ''
-                    };
-
-                    if (this.fields.length > 0) {
-                        for (var i = 0; i < this.fields.length; i++) {
-                            var field = this.fields[i].trim();
-                            if (object.hasOwnProperty(field)) {
-                                var newParam = '_p_';
-                                newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
-                                Object.defineProperty(params, newParam, {
-                                    value: object[field],
-                                    writable: true,
-                                    enumerable: true,
-                                    configurable: true
-                                });
-                            }
-                        }
-                    }
-
-                    service.remove(this.tp, params).$promise.then(callback);
-
-                }.bind(this);
-
-                if (this.deleteMessage && this.deleteMessage.length > 0) {
-                    if (confirm(this.deleteMessage)) {
-                        _remove(object, callback);
-                    }
-                } else {
-                    _remove(object, callback);
-                }
-            };
 
             /**
              * Get the object keys values from the datasource keylist
@@ -606,10 +592,11 @@ angular.module('legacyDatasource', [])
                     for (var i = 0; i < this.follow.length; i++) {
                         var masterName = this.follow[i];
                         if (datasetsList.hasOwnProperty(masterName)) {
+                            var dsFollow = datasetsList[masterName];
                             var param = "_p_";
                             param = param + i;
                             Object.defineProperty(tempFilters, param, {
-                                value: props[dsActive.key],
+                                value: dsFollow.active[dsFollow.key],
                                 writable: true,
                                 enumerable: true,
                                 configurable: true
@@ -727,6 +714,13 @@ angular.module('legacyDatasource', [])
                  * Atualiza automaticamente os observadores do objeto.
                  */
                 this.onNotifyObservers();
+
+                /*
+                 * Definindo valor padrão da chave.
+                 */
+                if (this.defaultValue) {
+                    this.active[this.key] = this.defaultValue;
+                }
             };
 
             /**
@@ -877,6 +871,7 @@ angular.module('legacyDatasource', [])
             dts.follow = props.follow;
             dts.record = props.record;
             dts.key = props.key;
+            dts.defaultValue = props.defaultValue;
 
             // old props
             dts.entity = props.entity;
@@ -983,6 +978,7 @@ angular.module('legacyDatasource', [])
                         follow: (attrs.follow) ? attrs.follow : [],
                         record: attrs.record,
                         key: attrs.key,
+                        defaultValue: (attrs.defaultValue) ? attrs.defaultValue : "",
 
                         // old attrs
                         entity: attrs.entity,
