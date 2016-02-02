@@ -170,16 +170,19 @@ angular.module('legacyDatasource', [])
 
                 if (this.fields.length > 0) {
                     for (var i = 0; i < this.fields.length; i++) {
-                        var field = this.fields[i].trim();
-                        if (obj.hasOwnProperty(field)) {
-                            var param = '_p_';
-                            param = param + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
-                            Object.defineProperty(params, param, {
-                                value: obj[field],
-                                writable: true,
-                                enumerable: true,
-                                configurable: true
-                            });
+                        var field = this.fields[i];
+                        if (field) {
+                            field = field.trim();
+                            if (obj.hasOwnProperty(field)) {
+                                var param = '_p_';
+                                param = param + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                                Object.defineProperty(params, param, {
+                                    value: obj[field],
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
+                            }
                         }
                     }
                 }
@@ -201,24 +204,27 @@ angular.module('legacyDatasource', [])
 
                 if (this.fields.length > 0) {
                     for (var i = 0; i < this.fields.length; i++) {
-                        var field = this.fields[i].trim();
-                        if (obj.hasOwnProperty(field)) {
-                            var newParam = '_p_';
-                            var oldParam = '_o_';
-                            newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
-                            oldParam = oldParam + i + '_0';
-                            Object.defineProperty(params, newParam, {
-                                value: obj[field],
-                                writable: true,
-                                enumerable: true,
-                                configurable: true
-                            });
-                            Object.defineProperty(params, oldParam, {
-                                value: oldObj[field],
-                                writable: true,
-                                enumerable: true,
-                                configurable: true
-                            });
+                        var field = this.fields[i];
+                        if (field) {
+                            field = field.trim();
+                            if (obj.hasOwnProperty(field)) {
+                                var newParam = '_p_';
+                                var oldParam = '_o_';
+                                newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                                oldParam = oldParam + i + '_0';
+                                Object.defineProperty(params, newParam, {
+                                    value: obj[field],
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
+                                Object.defineProperty(params, oldParam, {
+                                    value: oldObj[field],
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
+                            }
                         }
                     }
                 }
@@ -284,16 +290,19 @@ angular.module('legacyDatasource', [])
 
                     if (this.fields.length > 0) {
                         for (var i = 0; i < this.fields.length; i++) {
-                            var field = this.fields[i].trim();
-                            if (object.hasOwnProperty(field)) {
-                                var newParam = '_p_';
-                                newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
-                                Object.defineProperty(params, newParam, {
-                                    value: object[field],
-                                    writable: true,
-                                    enumerable: true,
-                                    configurable: true
-                                });
+                            var field = this.fields[i];
+                            if (field) {
+                                field = field.trim();
+                                if (object.hasOwnProperty(field)) {
+                                    var newParam = '_p_';
+                                    newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                                    Object.defineProperty(params, newParam, {
+                                        value: object[field],
+                                        writable: true,
+                                        enumerable: true,
+                                        configurable: true
+                                    });
+                                }
                             }
                         }
                     }
@@ -628,7 +637,7 @@ angular.module('legacyDatasource', [])
                         params: tempFilters
                     }).success(function (data, status, headers, config) {
                         busy = false;
-                        sucessHandler(data.data.records)
+                        sucessHandler(data)
                     }.bind(this)).error(function (data, status, headers, config) {
                         busy = false;
                         this.handleError(data);
@@ -638,9 +647,12 @@ angular.module('legacyDatasource', [])
 
                 // Success Handler
                 var sucessHandler = function (data) {
-                    if (data) {
-                        if (Object.prototype.toString.call(data) !== '[object Array]') {
-                            data = [data];
+                    if (data.data.records) {
+
+                        var records = data.data.records;
+
+                        if (Object.prototype.toString.call(records) !== '[object Array]') {
+                            records = [records];
                         }
 
                         // Call the before fill callback
@@ -648,37 +660,44 @@ angular.module('legacyDatasource', [])
                             callbacks.beforeFill.apply(this, this.data);
 
                         var dataObjects = [];
-                        for (var i = 0; i < data.length; i++) {
-                            var record = data[i];
+                        for (var i = 0; i < records.length; i++) {
+                            var record = records[i];
                             var tempObject = {};
                             for (var j = 0; j < this.fields.length; j++) {
-                                Object.defineProperty(tempObject, this.fields[j].trim(), {
-                                    value: record[j].trim(),
-                                    writable: true,
-                                    enumerable: true,
-                                    configurable: true
-                                });
+                                var field = this.fields[j];
+                                if (field) {
+                                    field = field.trim();
+                                    var recordValue = record[j];
+                                    if (recordValue) {
+                                        Object.defineProperty(tempObject, field, {
+                                            value: recordValue.trim(),
+                                            writable: true,
+                                            enumerable: true,
+                                            configurable: true
+                                        });
+                                    }
+                                }
                             }
                             dataObjects[i] = tempObject;
                         }
 
-                        data = dataObjects;
+                        records = dataObjects;
 
                         if (isNextOrPrev) {
                             // If prepend property was set.
                             // Add the new data before the old one
-                            if (this.prepend) this.data = data.concat(this.data);
+                            if (this.prepend) this.data = records.concat(this.data);
 
                             // If append property was set.
                             // Add the new data after the old one
-                            if (this.append) this.data = this.data.concat(data);
+                            if (this.append) this.data = this.data.concat(records);
 
                             // When neither  nor preppend was set
                             // Just replace the current data
                             if (!this.prepend && !this.append) {
-                                this.data = data;
+                                this.data = records;
                                 if (this.data.length > 0) {
-                                    this.active = data[0];
+                                    this.active = records[0];
                                     cursor = 0;
                                 } else {
                                     this.active = {};
@@ -687,17 +706,17 @@ angular.module('legacyDatasource', [])
                             }
                         } else {
                             this.cleanup();
-                            this.data = data;
+                            this.data = records;
                             if (this.data.length > 0) {
-                                this.active = data[0];
+                                this.active = records[0];
                                 cursor = 0;
                             }
                         }
 
                         if (callbacks.success)
-                            callbacks.success.call(this, data);
+                            callbacks.success.call(this, records);
 
-                        hasMoreResults = (data.length >= this.rowsPerPage);
+                        hasMoreResults = (records.length >= this.rowsPerPage);
 
                         /*
                          *  Register a watcher for data
@@ -708,6 +727,32 @@ angular.module('legacyDatasource', [])
                         if (this.autoPost)
                             this.startAutoPost();
                     }
+
+                    /**
+                     * Tratando chamadas ao controllerAfter e controllerBefore.
+                     */
+                    if (data.commands && data.commands.length > 0) {
+
+                        var commands = data.commands;
+
+                        if (commands[0].hasOwnProperty("jsCode")) {
+                            var regExp = new RegExp("'", 'g');
+                            var jsCode = commands[0].jsCode;
+
+                            var component = jsCode.substring(jsCode.indexOf("'"), jsCode.indexOf(","));
+                            component = component.replace(regExp, "");
+
+                            var value = jsCode.substring(jsCode.indexOf(",") + 1, jsCode.indexOf(",("));
+                            value = value.replace(regExp, "");
+
+                            var dataset = datasetsList[component];
+                            if (dataset) {
+                                dataset.active[dataset.key] = value;
+                                dataset.data[0] = data.active;
+                            }
+                        }
+                    }
+
                 }.bind(this);
 
                 /*
