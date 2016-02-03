@@ -240,7 +240,7 @@ angular.module('legacyDatasource', [])
 
                     this.insert(this.active, function (obj) {
 
-                        var dataset = this;
+                        var dataset = datasetsList[this.target];
                         $timeout(function () {
                             dataset.fetch.call(dataset, this);
                         }.bind(this));
@@ -251,7 +251,7 @@ angular.module('legacyDatasource', [])
 
                     this.update(this.active, this.oldActive, function (obj) {
 
-                        var dataset = this;
+                        var dataset = datasetsList[this.target];
                         $timeout(function () {
                             dataset.fetch.call(dataset, this);
                         }.bind(this));
@@ -309,7 +309,7 @@ angular.module('legacyDatasource', [])
 
                     service.remove(this.tp, params).$promise.then(function () {
 
-                        var dataset = this;
+                        var dataset = datasetsList[this.target];
                         $timeout(function () {
                             dataset.fetch.call(dataset, this);
                         }.bind(this), 1);
