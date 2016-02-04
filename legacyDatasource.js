@@ -356,8 +356,8 @@ angular.module('legacyDatasource', [])
                 if (item) {
                     this.active = this.copy(item);
                     this.oldActive = this.copy(item);
+                    this.editing = true;
                 }
-                this.editing = true;
             };
 
 
@@ -791,6 +791,17 @@ angular.module('legacyDatasource', [])
                     $timeout(function () {
                         dataset.fetch.call(dataset, this);
                     }.bind(this), 1);
+                }
+            };
+
+            /**
+             *
+             * @param item
+             */
+            this.onLineSelected = function (item) {
+                if (item) {
+                    this.active = this.copy(item);
+                    this.oldActive = this.copy(item);
                 }
             };
 
