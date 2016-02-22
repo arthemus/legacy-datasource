@@ -173,16 +173,14 @@ angular.module('legacyDatasource', [])
                         var field = this.fields[i];
                         if (field) {
                             field = field.trim();
-                            if (obj.hasOwnProperty(field)) {
-                                var param = '_p_';
-                                param = param + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
-                                Object.defineProperty(params, param, {
-                                    value: obj[field],
-                                    writable: true,
-                                    enumerable: true,
-                                    configurable: true
-                                });
-                            }
+                            var param = '_p_';
+                            param = param + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                            Object.defineProperty(params, param, {
+                                value: obj[field] || "",
+                                writable: true,
+                                enumerable: true,
+                                configurable: true
+                            });
                         }
                     }
                 }
@@ -216,24 +214,22 @@ angular.module('legacyDatasource', [])
                         var field = this.fields[i];
                         if (field) {
                             field = field.trim();
-                            if (obj.hasOwnProperty(field)) {
-                                var newParam = '_p_';
-                                var oldParam = '_o_';
-                                newParam = newParam + i + '_0';
-                                oldParam = oldParam + i + '_0';
-                                Object.defineProperty(params, newParam, {
-                                    value: obj[field] || "",
-                                    writable: true,
-                                    enumerable: true,
-                                    configurable: true
-                                });
-                                Object.defineProperty(params, oldParam, {
-                                    value: oldObj[field] || "",
-                                    writable: true,
-                                    enumerable: true,
-                                    configurable: true
-                                });
-                            }
+                            var newParam = '_p_';
+                            var oldParam = '_o_';
+                            newParam = newParam + i + '_0';
+                            oldParam = oldParam + i + '_0';
+                            Object.defineProperty(params, newParam, {
+                                value: obj[field] || "",
+                                writable: true,
+                                enumerable: true,
+                                configurable: true
+                            });
+                            Object.defineProperty(params, oldParam, {
+                                value: oldObj[field] || "",
+                                writable: true,
+                                enumerable: true,
+                                configurable: true
+                            });
                         }
                     }
                 }
@@ -269,16 +265,14 @@ angular.module('legacyDatasource', [])
                             var field = this.fields[i];
                             if (field) {
                                 field = field.trim();
-                                if (object.hasOwnProperty(field)) {
-                                    var newParam = '_p_';
-                                    newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
-                                    Object.defineProperty(params, newParam, {
-                                        value: object[field],
-                                        writable: true,
-                                        enumerable: true,
-                                        configurable: true
-                                    });
-                                }
+                                var newParam = '_p_';
+                                newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                                Object.defineProperty(params, newParam, {
+                                    value: object[field] || "",
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
                             }
                         }
                     }
