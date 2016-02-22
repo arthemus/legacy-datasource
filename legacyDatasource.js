@@ -130,7 +130,7 @@ angular.module('legacyDatasource', [])
                     }
 
                     var regex = /<h1>(.*)<\/h1>/gmi;
-                    result = regex.exec(error);
+                    var result = regex.exec(error);
 
                     if (result && result.length >= 2) {
                         error = result[1];
@@ -194,13 +194,22 @@ angular.module('legacyDatasource', [])
              * Uptade a value into this dataset by using the dataset key to compare
              * the objects
              */
-            this.update = function (obj, oldObj, callback) {
+            this.update = function (obj, oldObj, formData, callback) {
 
-                var params = {
-                    _id: this.record,
-                    _op: 'U',
-                    _q_p_0: 1 // TODO Pegar a quantidade de registros atual
-                };
+                var params = {};
+                if (formData) {
+                    params = {
+                        _id: this.record,
+                        _op_0: 'U',
+                        _count: 1 // TODO Ver quantidade de operações possiveis no EditorGrid
+                    }
+                } else {
+                    params = {
+                        _id: this.record,
+                        _op: 'U',
+                        _q_p_0: 1 // TODO Pegar a quantidade de registros atual
+                    };
+                }
 
                 if (this.fields.length > 0) {
                     for (var i = 0; i < this.fields.length; i++) {
@@ -210,16 +219,16 @@ angular.module('legacyDatasource', [])
                             if (obj.hasOwnProperty(field)) {
                                 var newParam = '_p_';
                                 var oldParam = '_o_';
-                                newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
+                                newParam = newParam + i + '_0';
                                 oldParam = oldParam + i + '_0';
                                 Object.defineProperty(params, newParam, {
-                                    value: obj[field],
+                                    value: obj[field] || "",
                                     writable: true,
                                     enumerable: true,
                                     configurable: true
                                 });
                                 Object.defineProperty(params, oldParam, {
-                                    value: oldObj[field],
+                                    value: oldObj[field] || "",
                                     writable: true,
                                     enumerable: true,
                                     configurable: true
@@ -230,39 +239,6 @@ angular.module('legacyDatasource', [])
                 }
 
                 service.update(this.tp, params).$promise.then(callback);
-            };
-
-            /**
-             * Insert or update based on the the datasource state
-             */
-            this.post = function () {
-                if (this.inserting) {
-
-                    this.insert(this.active, function (obj) {
-
-                        var dataset = datasetsList[this.target];
-                        $timeout(function () {
-                            dataset.fetch.call(dataset, this);
-                        }.bind(this));
-
-                    }.bind(this), 1);
-
-                } else if (this.editing) {
-
-                    this.update(this.active, this.oldActive, function (obj) {
-
-                        var dataset = datasetsList[this.target];
-                        $timeout(function () {
-                            dataset.fetch.call(dataset, this);
-                        }.bind(this));
-
-                    }.bind(this), 1);
-
-                }
-
-                // Set this datasource back to the normal state
-                this.editing = false;
-                this.inserting = false;
             };
 
             /**
@@ -328,6 +304,53 @@ angular.module('legacyDatasource', [])
             };
 
             /**
+             * Insert or update based on the the datasource state
+             */
+            this.post = function (data) {
+                if (this.inserting) {
+
+                    this.insert(this.active, function (obj) {
+
+                        var dataset = datasetsList[this.target];
+                        $timeout(function () {
+                            dataset.fetch.call(dataset, this);
+                        }.bind(this));
+
+                    }.bind(this), 1);
+
+                } else if (this.editing) {
+
+                    // Quando a edição está sendo realizada em um form, como no caso do componente GridEditor.
+                    if (data) {
+                        if (this.fields.length > 0) {
+                            for (var i = 0; i < this.fields.length; i++) {
+                                var field = this.fields[i];
+                                if (field) {
+                                    field = field.trim();
+                                    if (data.hasOwnProperty(field)) {
+                                        this.active[field] = data[field];
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    this.update(this.active, this.oldActive, data, function (obj) {
+
+                        var dataset = datasetsList[this.target];
+                        $timeout(function () {
+                            dataset.fetch.call(dataset, this);
+                        }.bind(this));
+
+                    }.bind(this), 1);
+                }
+
+                // Set this datasource back to the normal state
+                this.editing = false;
+                this.inserting = false;
+            };
+
+            /**
              * Cancel the editing or inserting state
              */
             this.cancel = function () {
@@ -354,12 +377,31 @@ angular.module('legacyDatasource', [])
              */
             this.startEditing = function (item) {
                 if (item) {
-                    this.active = this.copy(item);
-                    this.oldActive = this.copy(item);
+                    this.copy(this.active, this.oldActive);
                     this.editing = true;
                 }
             };
 
+            /**
+             * Ativa a edição de um determinado registro.
+             * Esse método é utilizado apenas por componentes como GridEditor onde a edição é feita
+             * diretamente na Grid sem a utilização de um formulário a parte.
+             */
+            this.editingForm = function (item, form) {
+                this.startEditing(item);
+                if (form)
+                    form.$show();
+            };
+
+            /**
+             * Cancela a edição do formulário.
+             * @param form
+             */
+            this.cancelForm = function (form) {
+                this.cancel();
+                if (form)
+                    form.$cancel();
+            };
 
             /**
              * Get the object keys values from the datasource keylist
