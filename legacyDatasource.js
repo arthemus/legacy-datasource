@@ -176,7 +176,7 @@ angular.module('legacyDatasource', [])
                             var param = '_p_';
                             param = param + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
                             Object.defineProperty(params, param, {
-                                value: obj[field] || "",
+                                value: this.getCronosValue(obj[field]),
                                 writable: true,
                                 enumerable: true,
                                 configurable: true
@@ -218,14 +218,14 @@ angular.module('legacyDatasource', [])
                             var oldParam = '_o_';
                             newParam = newParam + i + '_0';
                             oldParam = oldParam + i + '_0';
-                            Object.defineProperty(params, newParam, {
-                                value: obj[field] || "",
+                            Object.defineProperty(params, oldParam, {
+                                value: this.getCronosValue(oldObj[field]),
                                 writable: true,
                                 enumerable: true,
                                 configurable: true
                             });
-                            Object.defineProperty(params, oldParam, {
-                                value: oldObj[field] || "",
+                            Object.defineProperty(params, newParam, {
+                                value: this.getCronosValue(obj[field]),
                                 writable: true,
                                 enumerable: true,
                                 configurable: true
@@ -268,7 +268,7 @@ angular.module('legacyDatasource', [])
                                 var newParam = '_p_';
                                 newParam = newParam + i + '_0'; // TODO ver o funcionamento do EditorGrid para implementar a escrita de parametros _p_0_1.
                                 Object.defineProperty(params, newParam, {
-                                    value: object[field] || "",
+                                    value: this.getCronosValue(object[field]),
                                     writable: true,
                                     enumerable: true,
                                     configurable: true
@@ -300,7 +300,7 @@ angular.module('legacyDatasource', [])
             /**
              * Insert or update based on the the datasource state
              */
-            this.post = function (data) {
+            this.post = function (formData) {
                 if (this.inserting) {
 
                     this.insert(this.active, function (obj) {
@@ -315,21 +315,21 @@ angular.module('legacyDatasource', [])
                 } else if (this.editing) {
 
                     // Quando a edição está sendo realizada em um form, como no caso do componente GridEditor.
-                    if (data) {
+                    if (formData) {
                         if (this.fields.length > 0) {
                             for (var i = 0; i < this.fields.length; i++) {
                                 var field = this.fields[i];
                                 if (field) {
                                     field = field.trim();
-                                    if (data.hasOwnProperty(field)) {
-                                        this.active[field] = data[field];
+                                    if (formData.hasOwnProperty(field)) {
+                                        this.active[field] = formData[field];
                                     }
                                 }
                             }
                         }
                     }
 
-                    this.update(this.active, this.oldActive, data, function (obj) {
+                    this.update(this.active, this.oldActive, formData, function (obj) {
 
                         var dataset = datasetsList[this.target];
                         $timeout(function () {
@@ -695,6 +695,11 @@ angular.module('legacyDatasource', [])
                         if (callbacks.beforeFill)
                             callbacks.beforeFill.apply(this, this.data);
 
+                        /**
+                         * Escrita do objeto JSON com os dados de retorno da requisição AJAX.
+                         *
+                         * @type {Array}
+                         */
                         var dataObjects = [];
                         for (var i = 0; i < records.length; i++) {
                             var record = records[i];
@@ -706,7 +711,7 @@ angular.module('legacyDatasource', [])
                                     var recordValue = record[j];
                                     if (recordValue) {
                                         Object.defineProperty(tempObject, field, {
-                                            value: recordValue.trim(),
+                                            value: this.getJSValue(recordValue),
                                             writable: true,
                                             enumerable: true,
                                             configurable: true
@@ -802,6 +807,41 @@ angular.module('legacyDatasource', [])
                 if (this.defaultValue) {
                     this.active[this.key] = this.defaultValue;
                 }
+            };
+
+            /**
+             * Obtem o valor correto de acordo com uma suposição de seu tipo.
+             * @param value Valor a ser considerado.
+             */
+            this.getJSValue = function (value) {
+                var result = undefined;
+                if (typeof value === "undefined") {
+                    result = "";
+                } else if (typeof value === "string") {
+                    result = value.trim();
+                    if (value === "S" || value === "N")
+                        result = value === "S" ? true : false;
+                }
+                return result;
+            };
+
+            /**
+             * Obtem o valor no formato correto a ser trabalhado pelo framework Cronos.
+             * @param value Valor original a ser validado.
+             */
+            this.getCronosValue = function (value) {
+                var result = undefined;
+                switch (typeof value) {
+                    case "string":
+                        result = value.trim();
+                        break;
+                    case "boolean":
+                        result = (value ? "S" : "N");
+                        break;
+                    default:
+                        result = "";
+                }
+                return result;
             };
 
             /**
