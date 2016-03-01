@@ -298,6 +298,54 @@ angular.module('legacyDatasource', [])
             };
 
             /**
+             * Função utilizada pelo componete SearchBox para pesquisa.
+             *
+             * @param params
+             * @returns {*}
+             */
+            this.liveSearch = function (search_string, dataset) {
+
+                var defer = $q.defer();
+
+                var reqParams = {
+                    _id: dataset.target,
+                    _descr: search_string,
+                    start: 0,
+                    limit: 12
+                };
+
+                var req = {
+                    url: dataset.tp,
+                    method: "POST",
+                    params: reqParams
+                };
+
+                $http(req)
+                    .then(function (result) {
+                        var records = result.data.data.records.map(function (record) {
+                            var srcObj = {};
+                            var length = dataset.fields.length;
+                            for (var i = 0; i < length; i++) {
+                                var field = dataset.fields[i];
+                                Object.defineProperty(srcObj, field, {
+                                    value: record[i],
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
+                            }
+                            return srcObj;
+                        });
+                        defer.resolve(records);
+                    })
+                    .catch(function (erro) {
+                        console.log(error);
+                    });
+
+                return defer.promise;
+            };
+
+            /**
              * Insert or update based on the the datasource state
              */
             this.post = function (formData) {
@@ -651,10 +699,10 @@ angular.module('legacyDatasource', [])
                 }
 
                 // Set Limit and offset
-                if (this.rowsPerPage > 0) {
-                    props.params.limit = this.rowsPerPage;
-                    props.params.offset = this.offset;
-                }
+                //if (this.rowsPerPage > 0) {
+                //    props.params.limit = this.rowsPerPage;
+                //    props.params.offset = this.offset;
+                //}
 
                 // Stop auto post for awhile
                 this.stopAutoPost();
@@ -1090,7 +1138,8 @@ angular.module('legacyDatasource', [])
         };
 
         return this;
-    }])
+    }
+    ])
 
     /**
      * Cronos Dataset Directive
