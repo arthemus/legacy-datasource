@@ -309,10 +309,30 @@ angular.module('legacyDatasource', [])
 
                 var reqParams = {
                     _id: dataset.target,
-                    _descr: search_string,
                     start: 0,
-                    limit: 12
+                    limit: 12,
+                    _descr: search_string
                 };
+
+                if (dataset.follow) {
+                    var length = dataset.follow.length;
+                    if (length > 0) {
+                        for (var i = 0; i < length; i++) {
+                            var followName = dataset.follow[i];
+                            if (datasetsList.hasOwnProperty(followName)) {
+                                var dsFollow = datasetsList[followName];
+                                var param = "_p_";
+                                param = param + i;
+                                Object.defineProperty(reqParams, param, {
+                                    value: dsFollow.active[dsFollow.key],
+                                    writable: true,
+                                    enumerable: true,
+                                    configurable: true
+                                });
+                            }
+                        }
+                    }
+                }
 
                 var req = {
                     url: dataset.tp,
